@@ -1,21 +1,31 @@
 from heater import Heater
-from ptc import PTC
 from pid import PIDController
+from max6675 import MAX6675
+from utils import map_value
+import time
 
-from machine import Timer
+so = 15
+sck = 13
+cs = 14
 
 #Inicializacion 
+max = MAX6675(sck,cs,so)
 heater = Heater(16)
-ptc = PTC(28)
-pid = PIDController(0.6,0.01, 0.001)
+pid = PIDController(25, 2.5 , 0.25)
 
-setpoint = 5000
+setpoint = 35
+
 pid.setSetpoint(setpoint)
 
 def calculate():
-  currTemp = ptc.read()
+  currTemp = max.read()
   output = pid.update(currTemp)
-  heater.update(output)
-  print("Temperatura: ",currTemp,"\t\tSeteado: ",setpoint,"\t\tControl: ", output)
+  outputScaled = int(map_value(output, -100, 100,-65535,65535))
+  outputScaled = 0 if outputScaled < 0 else 65535 if outputScaled > 65535 else outputScaled
+  heater.update(outputScaled)
+  print("Temperatura: {:.2f} C \tSeteado: {} C \tControl: {:.2f}\tControl Escalado: {}".format(currTemp, setpoint, output, outputScaled))
 
-calculate()
+
+while True:
+  calculate()
+  time.sleep_ms(500)
